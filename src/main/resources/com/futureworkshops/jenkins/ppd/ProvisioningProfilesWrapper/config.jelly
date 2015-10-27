@@ -1,0 +1,39 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout"
+         xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:c="/lib/credentials">
+    <!--
+      This jelly script is used for per-project configuration.
+
+      See global.jelly for a general discussion about jelly script.
+    -->
+
+    <!--
+      Creates a text field that shows the value of the "name" property.
+      When submitted, it will be passed to the corresponding constructor parameter.
+    -->
+    <f:entry title="Developer Portal Credentials" field="developerPortalCredentialsID">
+        <c:select/>
+    </f:entry>
+    <f:entry title="Developer Portal Team ID" field="developerTeamID">
+        <f:textbox/>
+    </f:entry>
+    <!--
+    <f:block>
+    <f:repeatable var="provisioningProfile" field="provisioningProfiles" minimum="1" add="Add">
+    <table width="100%"> -->
+    <f:entry title="Provisioning Profile Name" field="provisioningProfileName">
+        <f:textbox/>
+    </f:entry>
+    <!--</table>
+    </f:repeatable>
+    </f:block> -->
+
+    <f:entry title="Delete profiles after built" field="deleteProfilesAfterBuild">
+        <f:checkbox/>
+    </f:entry>
+    <!--<f:entry title="Overwrite existing profiles" field="overwriteExistingProfiles">
+        <f:checkbox/>
+    </f:entry>
+    -->
+
+</j:jelly>
