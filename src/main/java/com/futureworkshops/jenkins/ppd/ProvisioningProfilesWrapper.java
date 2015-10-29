@@ -93,8 +93,8 @@ public class ProvisioningProfilesWrapper extends BuildWrapper {
             procStarter = procStarter.pwd(projectWorkspace)
                                      .cmds("ruby", "src/main/webapp/script.rb", username, password, teamID, profileName, localDest.getRemote())
                                      .quiet(true)
-                                     .stderr(listener.getLogger())
-                                     .stdout(listener.getLogger());
+                                     .stdout(listener.getLogger())
+                                     .stderr(listener.getLogger());
             Proc proc = launcher.launch(procStarter);
             int retcode = proc.join();
             if(retcode != 0) {
