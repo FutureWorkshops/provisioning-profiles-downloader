@@ -63,6 +63,21 @@ def download_profile(devportal_username, devportal_password, devportal_teamID, p
   FileUtils.copy(downloaded_profile_path, destination)
 end
 
+def install_gem(gem_name)
+  unless system("gem install --user-install #{gem_name}", {:out =>"/dev/null", :err =>"/dev/null"})
+    puts "#{$?}"
+    STDERR.puts "Unable to install required ruby library (#{gem_name})"
+    exit -11
+  end
+end
+
+def update_gem(gem_name)
+  unless system("gem update --user-install #{gem_name}", {:out =>"/dev/null", :err =>"/dev/null"})
+    puts "#{$?}"
+    STDERR.puts "Unable to update required ruby library (#{gem_name})"
+    exit -11
+  end
+end
 ##################################
 ## Main
 
@@ -79,10 +94,18 @@ unless ARGV.length == 5
 end
 
 puts "Installing required libraries"
-unless system("gem install --user-install spaceship plist", {:out =>"/dev/null", :err =>"/dev/null"})
-  puts "#{$?}"
-  STDERR.puts "Unable to install required ruby libraries"
-  exit -11
+gems_installed = `gem list`
+gems_to_update = `gem outdated`
+if gems_installed.include? "spaceship"
+    update_gem("spaceship") if gems_to_update.include? "spaceship"
+else
+  install_gem "spaceship"
+end
+
+if gems_installed.include? "plist"
+    update_gem("plist") if gems_to_update.include? "plist"
+else
+  install_gem "plist"
 end
 
 gem 'plist'

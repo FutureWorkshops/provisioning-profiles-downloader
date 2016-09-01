@@ -17,16 +17,22 @@
     <f:entry title="Developer Portal Team ID" field="developerTeamID">
         <f:textbox/>
     </f:entry>
-    <!--
-    <f:block>
-    <f:repeatable var="provisioningProfile" field="provisioningProfiles" minimum="1" add="Add">
-    <table width="100%"> -->
-    <f:entry title="Provisioning Profile Name" field="provisioningProfileName">
-        <f:textbox/>
+
+    <f:entry title="Provisioning Profiles">
+        <f:repeatable field="provisioningProfiles" minimum="1" add="Add">
+            <table width="100%">
+                <f:entry title="Provisioning Profile Name" field="provisioningProfileName">
+                    <f:textbox/>
+                </f:entry>
+                <f:entry title="Provisioning Profile UDID variable name" field="provisioningProfileVariableName">
+                        <f:textbox default="PROVISIONING_PROFILE_UDID"/>
+                </f:entry>
+                <div align="right">
+                    <input type="button" value="${attrs.value ?: '%Delete'}" title="${attrs.value ?: '%Delete'}" class="repeatable-delete danger show-if-not-only" />
+                </div>
+            </table>
+        </f:repeatable>
     </f:entry>
-    <!--</table>
-    </f:repeatable>
-    </f:block> -->
 
     <f:entry title="Delete profiles after built" field="deleteProfilesAfterBuild">
         <f:checkbox/>

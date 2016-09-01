@@ -7,6 +7,7 @@ import hudson.model.*;
 import hudson.security.ACL;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrapperDescriptor;
+import hudson.util.CopyOnWriteMap;
 import hudson.util.ListBoxModel;
 import jenkins.model.Jenkins;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -27,20 +28,22 @@ public class ProvisioningProfilesWrapper extends BuildWrapper {
     private boolean overwriteExistingProfiles;
     private String developerTeamID;
     private String developerPortalCredentialsID;
-    private String provisioningProfileName;
+    private List<ProvisioningProfileParam> provisioningProfiles = Collections.emptyList();
 
     private transient List<FilePath> copiedProfiles;
+    private transient Map<String, ProvisioningProfileParam> provisioningParamToUDID;
 
     @DataBoundConstructor
     public ProvisioningProfilesWrapper(String developerTeamID,
                                        String developerPortalCredentialsID,
-                                       String provisioningProfileName,
+                                       List<ProvisioningProfileParam> provisioningProfiles,
                                        boolean deleteProfilesAfterBuild,
                                        boolean overwriteExistingProfiles) {
         super();
+
         this.developerTeamID = developerTeamID;
         this.developerPortalCredentialsID = developerPortalCredentialsID;
-        this.provisioningProfileName = provisioningProfileName;
+        this.provisioningProfiles = provisioningProfiles;
 
         this.deleteProfilesAfterBuild = deleteProfilesAfterBuild;
         this.overwriteExistingProfiles = overwriteExistingProfiles;
@@ -51,13 +54,9 @@ public class ProvisioningProfilesWrapper extends BuildWrapper {
         return developerTeamID;
     }
 
-    public String getDeveloperPortalCredentialsID() {
-        return developerPortalCredentialsID;
-    }
+    public String getDeveloperPortalCredentialsID() { return developerPortalCredentialsID; }
 
-    public String getProvisioningProfileName() {
-        return provisioningProfileName;
-    }
+    public List<ProvisioningProfileParam> getProvisioningProfiles() { return provisioningProfiles; }
 
     public boolean getDeleteProfilesAfterBuild() {
         return deleteProfilesAfterBuild;
@@ -84,29 +83,34 @@ public class ProvisioningProfilesWrapper extends BuildWrapper {
         String username = credentials.getUsername();
         String password = credentials.getPassword().getPlainText();
         String teamID = this.getDeveloperTeamID();
-        String profileName = this.getProvisioningProfileName();
         FilePath localDest = new FilePath(projectWorkspace, "binary");
 
         if(credentials != null) {
             localDest.mkdirs();
-            Launcher.ProcStarter procStarter = launcher.launch();
-            procStarter = procStarter.pwd(projectWorkspace)
-                                     .cmds("ruby", "src/main/webapp/script.rb", username, password, teamID, profileName, localDest.getRemote())
-                                     .quiet(true)
-                                     .stdout(listener.getLogger())
-                                     .stderr(listener.getLogger());
-            Proc proc = launcher.launch(procStarter);
-            int retcode = proc.join();
-            if(retcode != 0) {
-                build.setResult(Result.FAILURE);
-                return null;
-            }
-            FilePath[] UUIDs = localDest.list("*.uuid");
-            this.copiedProfiles  = new LinkedList<FilePath>();
-            for(FilePath path : UUIDs) {
-                FilePath realPath = new FilePath(FilePath.getHomeDirectory(projectWorkspace.getChannel()), "Library/MobileDevice/Provisioning Profiles/" + path.getBaseName() + ".mobileprovision");
-                this.copiedProfiles.add(realPath);
-                path.delete();
+            this.copiedProfiles = new LinkedList<FilePath>();
+            this.provisioningParamToUDID = new HashMap<String, ProvisioningProfileParam>();
+            for(ProvisioningProfileParam param : this.provisioningProfiles) {
+                Launcher.ProcStarter procStarter = launcher.launch();
+                procStarter = procStarter.pwd(projectWorkspace)
+                        .cmds("ruby", "src/main/webapp/script.rb", username, password, teamID, param.getProvisioningProfileName(), localDest.getRemote())
+                        .quiet(true)
+                        .stdout(listener.getLogger())
+                        .stderr(listener.getLogger());
+                Proc proc = launcher.launch(procStarter);
+                int retcode = proc.join();
+                if (retcode != 0) {
+                    build.setResult(Result.FAILURE);
+                    return null;
+                }
+                FilePath[] UUIDs = localDest.list("*.uuid");
+                if(UUIDs.length > 0) {
+                    String UUID = UUIDs[0].getBaseName();
+                    UUIDs[0].delete();
+
+                    FilePath realPath = new FilePath(FilePath.getHomeDirectory(projectWorkspace.getChannel()), "Library/MobileDevice/Provisioning Profiles/" + UUID + ".mobileprovision");
+                    this.copiedProfiles.add(realPath);
+                    this.provisioningParamToUDID.put(UUID, param);
+                }
             }
         }
 
@@ -134,9 +138,7 @@ public class ProvisioningProfilesWrapper extends BuildWrapper {
         }
 
         @Override
-        public String getDisplayName() {
-            return "Provisioing Profiles Wrapper";
-        }
+        public String getDisplayName() { return "Provisioning Profiles Wrapper"; }
 
         public ListBoxModel doFillDeveloperPortalCredentialsIDItems(ItemGroup context) {
 
@@ -171,7 +173,11 @@ public class ProvisioningProfilesWrapper extends BuildWrapper {
          */
         private Map<String, String> getEnvMap() {
             Map<String, String> map = new HashMap<String, String>();
-            map.put("PROVISIONING_PROFILE_NAME", provisioningProfileName);
+            for(Map.Entry<String, ProvisioningProfileParam> entry : provisioningParamToUDID.entrySet()) {
+                String UUID = entry.getKey();
+                String variableName = entry.getValue().getProvisioningProfileVariableName();
+                map.put(variableName, UUID);
+            }
             return map;
         }
 
